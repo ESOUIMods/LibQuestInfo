@@ -37,8 +37,16 @@ local quest_map_pin_index_default = {
 }
 
 -- Function to check for empty table
-local function is_empty(t)
+function lib:is_empty(t)
     if next(t) == nil then
+        return true
+    else
+        return false
+    end
+end
+
+function lib:is_nil(t)
+    if t == nil then
         return true
     else
         return false

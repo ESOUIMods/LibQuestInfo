@@ -9,6 +9,7 @@ local GPS = LibGPS2
 local LMP = LibMapPins
 local quest_shared
 local quest_found
+local quest_data_updated -- lib.quest_data[quest_id] has changed
 
 -- Check if zone is base zone
 local function IsBaseZone(zoneAndSubzone)
@@ -139,12 +140,59 @@ local function OnQuestCompleteDialog(eventCode, journalIndex)
 end
 EVENT_MANAGER:RegisterForEvent(lib.idName, EVENT_QUEST_COMPLETE_DIALOG, OnQuestCompleteDialog) -- Verified
 
+local function build_default_data()
+    local defaults = {}
+    defaults[lib.quest_data_index.QUEST_NAME] = -1
+    defaults[lib.quest_data_index.QUEST_GIVER] = -1
+    defaults[lib.quest_data_index.QUEST_TYPE] = -1
+    defaults[lib.quest_data_index.QUEST_REPEAT] = -1
+    defaults[lib.quest_data_index.GAME_API] = 100003
+    defaults[lib.quest_data_index.QUEST_LINE] = 10000
+    defaults[lib.quest_data_index.QUEST_NUMBER] = 10000
+    defaults[lib.quest_data_index.QUEST_SERIES] = 0
+    return defaults
+end
+
+local function check_nil_data(data_table)
+    local new_data = {}
+    if lib:is_nil(data_table) then new_data = build_default_data() end
+    -- if not lib:is_nil(data_table) then
+    --     if lib:is_empty(data_table) then new_data = build_default_data end
+    -- end
+    return new_data
+end
+
+local function check_quest_type(quest_type, quest_id)
+    local quest_data = {}
+    quest_data = check_nil_data(lib.quest_data[quest_id])
+    d(quest_data)
+
+    if quest_data[lib.quest_data_index.QUEST_TYPE] ~= quest_type then
+        quest_data[lib.quest_data_index.QUEST_TYPE] = quest_type
+        d(quest_data)
+        --d(quest_data[lib.quest_data_index.QUEST_TYPE])
+        --d(lib.
+        --[quest_id])
+        lib.quest_data[quest_id][lib.quest_data_index.QUEST_TYPE] = quest_data[lib.quest_data_index.QUEST_TYPE]
+        quest_data_updated = true
+        d("Updated Data")
+    end
+end
+
 -- Event handler function for EVENT_QUEST_REMOVED
 local function OnQuestRemoved(eventCode, isCompleted, journalIndex, questName, zoneIndex, poiIndex, questID)
     if string.find(string.lower(questName), "writ") then return end
     -- d(questName)
     -- d("OnQuestRemoved")
     local quest_to_update = nil
+
+    d("going to check")
+    check_quest_type(GetJournalQuestType(journalIndex), questID)
+    if quest_data_updated then
+        if LibQuestInfo_SavedVariables.questInfo[questID] == nil then LibQuestInfo_SavedVariables.questInfo[questID] = {} end
+        LibQuestInfo_SavedVariables.questInfo[questID] = lib.quest_data[quest_id]
+        quest_data_updated = false
+    end
 
     for zone, zone_quests in pairs(LibQuestInfo_SavedVariables.quests) do
         for num_entry, quest_from_table in pairs(zone_quests) do
